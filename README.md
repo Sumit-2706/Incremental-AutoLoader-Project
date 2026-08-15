@@ -248,15 +248,16 @@ file. Reported honestly rather than oversold.
 ```
 project-sentinel/
 ├── README.md
+├── Architecture
+├── Project Sentinenl -- overview
 ├── 00_environment_discovery.py
 ├── project_sentinel_pipeline.py           # Bronze + Silver + Gold + monitoring + anomaly detection
 ├── 02_security_and_performance_review.py  # OPTIMIZE/ZORDER benchmark + grants/PII review
-├── Internship_Project_Report.md
-├── Interview_Prep_and_Final_Audit.md
-├── Demo_Script.md
 ├── Screenshot_Evidence_Plan.md
 ├── docs/
 │   ├── data_dictionary.md
+│   ├── Internship_Project_Report.md
+│   ├── Demo_Script.md
 │   ├── testing.md
 │   ├── troubleshooting.md
 │   └── security_review_output.md
