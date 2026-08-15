@@ -1,35 +1,38 @@
 # Databricks notebook source
 # =========================================================
-# PROJECT SENTINEL — Environment Discovery
-# Run this FIRST, before writing any pipeline code.
-# Purpose: confirm the real workspace environment instead of assuming it
-# (cloud provider, compute type, Spark version, Unity Catalog availability,
-# Delta Lake support, Auto Loader availability).
+# ENVIRONMENT DISCOVERY — run this first, before writing any pipeline code
 # =========================================================
 #
-# ACTUALLY EXECUTED — this is not a hypothetical script. Output captured
-# from a real run against a Databricks Free Edition workspace:
-#   Spark version: 4.1.0
-#   Runtime tag:   not available (expected on serverless compute — the
-#                  cluster usage tag config simply doesn't exist there)
-#   Delta Lake:    WORKING (create/drop test table succeeded)
-#   Auto Loader:   available (cloudFiles stream object created successfully)
+# Purpose: confirm the real workspace environment instead of assuming it.
+# Every fact in README.md Section 3 ("Environment") was verified here,
+# directly against the live workspace, before project_sentinel_pipeline.py
+# was written.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Spark / runtime / cloud provider
 
 # COMMAND ----------
 
 print("Spark version:", spark.version)
 
-# On serverless compute this config key does not exist — that failure is
-# itself informative (confirms serverless, not a misconfiguration).
 try:
     print("Databricks Runtime:", spark.conf.get("spark.databricks.clusterUsageTags.sparkVersion"))
 except Exception as e:
-    print("Runtime tag not available (expected on serverless):", type(e).__name__)
+    print("Runtime tag not available (expected on serverless):", e)
 
 try:
     print("Cloud provider:", spark.conf.get("spark.databricks.cloudProvider"))
 except Exception as e:
-    print("Cloud provider tag not available:", type(e).__name__)
+    print("Cloud provider tag not available:", e)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Catalog / Unity Catalog
+
+# COMMAND ----------
 
 print("Current catalog:", spark.sql("SELECT current_catalog()").collect()[0][0])
 
@@ -43,23 +46,31 @@ display(spark.sql("SHOW SCHEMAS"))
 
 # COMMAND ----------
 
-# Delta Lake availability check — create and immediately drop a throwaway table
+# MAGIC %md
+# MAGIC ## Delta Lake availability
+
+# COMMAND ----------
+
 try:
     spark.sql("CREATE TABLE IF NOT EXISTS default.delta_test_check (id INT) USING DELTA")
     print("Delta Lake: WORKING")
     spark.sql("DROP TABLE default.delta_test_check")
 except Exception as e:
-    print("Delta Lake check FAILED:", e)
+    print("Delta Lake check failed:", e)
 
-# Auto Loader availability check — creating the stream object (not running it)
-# is enough to confirm the format is registered and usable in this workspace.
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Auto Loader (cloudFiles) availability
+
+# COMMAND ----------
+
 try:
-    _probe = (spark.readStream
+    df = (spark.readStream
         .format("cloudFiles")
         .option("cloudFiles.format", "csv")
         .schema("id INT")
-        .load("/tmp/nonexistent_probe_path/")
-    )
+        .load("/tmp/nonexistent_probe_path/"))
     print("Auto Loader (cloudFiles): available (stream object created)")
 except Exception as e:
     print("Auto Loader check note:", e)
@@ -67,12 +78,10 @@ except Exception as e:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Create the project's dedicated schema and Volume
+# MAGIC ## Create the project's dedicated schema + Volume
 # MAGIC
-# MAGIC Deliberately NOT using the shared `default` schema — a dedicated
-# MAGIC `workspace.sentinel` schema keeps this project self-contained and
-# MAGIC limits the blast radius of any misconfiguration (see Security section
-# MAGIC of the Internship Report, "Least privilege").
+# MAGIC A schema/Volume separate from `default` keeps this project
+# MAGIC self-contained and easy to tear down cleanly.
 
 # COMMAND ----------
 
@@ -85,7 +94,7 @@ display(spark.sql("SHOW VOLUMES IN workspace.sentinel"))
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Confirmed environment summary
+# MAGIC ## Confirmed result
 # MAGIC
 # MAGIC | Item | Value |
 # MAGIC |---|---|
@@ -95,10 +104,5 @@ display(spark.sql("SHOW VOLUMES IN workspace.sentinel"))
 # MAGIC | Spark version | 4.1.0 |
 # MAGIC | Catalog | Unity Catalog (`workspace`) |
 # MAGIC | Storage | Unity Catalog Volume (`workspace.sentinel.files`) |
-# MAGIC | Delta Lake | Confirmed working |
-# MAGIC | Auto Loader | Confirmed available |
 # MAGIC
-# MAGIC This confirmed environment is why the pipeline uses UC Volume paths
-# MAGIC (`/Volumes/workspace/sentinel/files/...`) and three-level table naming
-# MAGIC (`workspace.sentinel.<table>`) instead of `abfss://` / Hive Metastore
-# MAGIC paths that a generic reference notebook might assume.
+# MAGIC Next: run `project_sentinel_pipeline.py`, starting with its SETUP cell.
